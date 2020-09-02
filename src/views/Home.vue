@@ -1,19 +1,24 @@
 <template>
   <div>
     <h1>RNM API</h1>
-    <input id="search" placeholder="name" v-model="urlElements.name" />
-    <br />
-    <input id="search" placeholder="location" v-model="urlElements.location" />
-    <br />
-    <input id="search" placeholder="gender" v-model="urlElements.gender" />
-    <br />
-    <button @click.prevent="urlBuilder">Search</button>
+    <form>
+      <input id="search" placeholder="name" v-model="urlElements.name" />
+      <br />
+      <input id="search" placeholder="location" v-model="urlElements.location" />
+      <br />
+      <input id="search" placeholder="gender" v-model="urlElements.gender" />
+      <br />
+      <button @click.prevent="urlBuilder" @keydown.enter="urlBuilder">Search</button>
+    </form>
     <div class="container">
       <div class="row">
         <div v-for="object in characterInfo" :key="object.id">
           <div class="col-sm-4">
             <Cell class="cell" :object="object"></Cell>
           </div>
+        </div>
+        <div id="error">
+          <h2 v-if="this.error != ''">{{ error }}, please try again</h2>
         </div>
       </div>
     </div>
@@ -35,56 +40,53 @@ export default {
       characterInfo: [],
       urlElements: {
         gender: "",
-        name: "",
+        location: "",
         id: "",
       },
+      url: "https://rickandmortyapi.com/api/character/",
+      error: "",
     };
   },
   methods: {
     apiCall(searchTerm) {
       this.$store.commit("startLoading");
       if (searchTerm != null) {
-        // this.characterInfo = [];
-        // axios(searchTerm).then((response) =>
-        //   response.forEach((element) => {
-        //     this.characterInfo.push({
-        //       id: element.id,
-        //       name: element.name,
-        //       gender: element.gender,
-        //       location: element.location,
-        //       img: element.image,
-        //     });
-        //   })
-        // );
+        this.characterInfo = [];
+        axios(searchTerm)
+          .then((response) => {
+            this.populateCell(response.data.results);
+            this.error = "";
+          })
+          .catch((error) => {
+            this.error = error;
+          });
       } else {
-        axios(
-          "https://rickandmortyapi.com/api/character/" + this.numList
-        ).then((response) => this.populateCell(response.data));
+        axios(this.url + this.numList).then((response) =>
+          this.populateCell(response.data)
+        );
       }
       this.$store.commit("stopLoading");
     },
     urlBuilder() {
-      var baseurl = "https://rickandmortyapi.com/api/character/?";
+      var baseurl = this.url + "?";
       var paramString = new URLSearchParams({
         name: this.urlElements.name,
         location: this.urlElements.location,
         gender: this.urlElements.gender,
       });
       var constructedURL = baseurl + paramString;
-      // this.apiCall(constructedURL);
-      // Useless but demonstrates that the URL construction works.
-      console.log(constructedURL);
+      this.apiCall(constructedURL);
     },
     populateCell(apiResult) {
-      apiResult.forEach((element) => {
+      for (const result of apiResult) {
         this.characterInfo.push({
-          id: element.id,
-          name: element.name,
-          gender: element.gender,
-          location: element.location,
-          img: element.image,
+          id: result.id,
+          name: result.name,
+          gender: result.gender,
+          location: result.location,
+          img: result.image,
         });
-      });
+      }
     },
   },
   created() {
@@ -92,7 +94,6 @@ export default {
       this.numList.push(Math.floor(Math.random() * 670 + 1));
     }
     this.apiCall();
-    this.$store.commit("stopLoading");
   },
 };
 </script>
